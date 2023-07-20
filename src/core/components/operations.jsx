@@ -25,6 +25,56 @@ export default class Operations extends React.Component {
 
     const taggedOps = specSelectors.taggedOperations()
 
+    // //RW hack
+    // //The core issue is why the default tag gets introduced in the first place; clearly specs mixing.
+    // if(taggedOps.get('default')?.size > 0){
+    //   taggedOps = taggedOps.delete('default');
+    // }
+      // console.log("=====================================================================")
+      // console.log("Specselectors")
+      // console.log(specSelectors);
+      // console.log("Computing: specSelectors.operations().toArray().map(x => x.toArray())");
+      // console.log("with a total of: " + specSelectors.operations().toArray().length);
+      // console.log(specSelectors.operations().toArray().map(x => x.toArray()));
+
+      // console.log("Computing: Object.fromEntries(specSelectors.paths())");
+      // console.log(Object.fromEntries(specSelectors.paths()));
+
+       console.log("Computing: taggedOps");
+      // console.log("with a total of: " + taggedOps.size);
+       console.log(Object.fromEntries(taggedOps));
+      // console.log(taggedOps);
+
+      // console.log("Computing: specSelectors.specJS().paths");
+      // console.log("with a total of: " + Object.entries(specSelectors.specJS().paths).length);
+      // console.log(specSelectors.specJS().paths);
+
+    //================================================================
+    // var tags = [];
+
+    // for(var [path, pathVerbAndDetail] in Object.entries(specSelectors.specJS().paths)){
+    //   tags.push(...specSelectors.specJS().paths[path][pathVerbAndDetail].tags);
+    // }
+
+    // var hackedMockForTags =  new Map();
+
+    // for(var tag in tags){
+
+    //   var operation = new Map()
+    //   operation.set('tagDetails', undefined);
+    //   operation.set('operations', specSelectors.specJS().paths);
+
+    //   if(hackedMockForTags.get(tag)){
+    //     var existingValue = hackedMockForTags.get(tag);
+    //     existingValue.push(operation);
+    //   }
+    //   else{
+    //     hackedMockForTags.set(tag, [operation])
+    //   }
+    // }
+
+    //hackedMockForTags = ""
+
     if(taggedOps.size === 0) {
       return <h3> No operations defined in spec!</h3>
     }
@@ -62,6 +112,11 @@ export default class Operations extends React.Component {
         getComponent={getComponent}
         specUrl={specSelectors.url()}>
         <div className="operation-tag-content">
+          {/* {[
+            console.log('2'),
+            console.log(tag),
+            console.log(Array.from(operations).map(x => Array.from(x)))
+          ]} */}
           {
             operations.map(op => {
               const path = op.get("path")

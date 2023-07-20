@@ -1,5 +1,6 @@
 import { fromJS, List } from "immutable"
 import { fromJSOrdered, validateParam, paramToValue } from "core/utils"
+import * as Im from 'immutable';
 import win from "../../window"
 
 // selector-in-reducer is suboptimal, but `operationWithMeta` is more of a helper
@@ -21,6 +22,8 @@ import {
   SET_MUTATED_REQUEST,
   UPDATE_RESOLVED,
   UPDATE_RESOLVED_SUBTREE,
+  UPDATE_REQUEST_BATCH,
+  DELETE_REQUEST_BATCH,
   UPDATE_OPERATION_META_VALUE,
   CLEAR_RESPONSE,
   CLEAR_REQUEST,
@@ -46,15 +49,54 @@ export default {
   },
 
   [UPDATE_RESOLVED]: (state, action) => {
+    console.log('reducers->UPDATE_RESOLVED');
+
     return state.setIn(["resolved"], fromJSOrdered(action.payload))
   },
 
+  [UPDATE_REQUEST_BATCH]: (state, action) => {
+    //console.log('reducers->UPDATE_REQUEST_BATCH');
+
+    var requestBatch = state.get('requestBatch') ?? [];
+    requestBatch.push(...action.payload);
+
+    return state.setIn(['requestBatch'], requestBatch);
+  },
+
+  [DELETE_REQUEST_BATCH]: (state, action) => {
+    //debugger;
+     //Remove all items but keep array
+    //return state.filter(([key, value]) => key !== 'requestBatch');
+
+
+    // //Its bad practice to delete, so instead we update the original array
+    var originalArray = state.getIn(['requestBatch']);
+
+    //return state.updateIn(['requestBatch'], value => []);
+
+    //return state.deleteIn(['requestBatch']);
+
+    // var debug = {
+    //   ...state,
+    //   requestBatch: originalArray.filter(x => false)
+    // };
+
+    return state.update('requestBatch', value => originalArray.filter(x => false));
+  },
+
   [UPDATE_RESOLVED_SUBTREE]: (state, action) => {
+    // console.log('#################################################')
+    // console.log('reducers->UPDATE_RESOLVED_SUBTREE');
+    // console.log(action.payload);
+    // console.log('#################################################')
+
     const { value, path } = action.payload
     return state.setIn(["resolvedSubtrees", ...path], fromJSOrdered(value))
   },
 
   [UPDATE_PARAM]: ( state, {payload} ) => {
+    console.log('reducers->UPDATE_PARAM');
+
     let { path: pathMethod, paramName, paramIn, param, value, isXml } = payload
 
     let paramKey = param ? paramToIdentifier(param) : `${paramIn}.${paramName}`
@@ -68,6 +110,8 @@ export default {
   },
 
   [UPDATE_EMPTY_PARAM_INCLUSION]: ( state, {payload} ) => {
+    console.log('reducers->UPDATE_EMPTY_PARAM_INCLUSION');
+
     let { pathMethod, paramName, paramIn, includeEmptyValue } = payload
 
     if(!paramName || !paramIn) {
@@ -139,6 +183,9 @@ export default {
   },
 
   [UPDATE_OPERATION_META_VALUE]: (state, { payload: { path, value, key } }) => {
+
+    console.log('reducers->UPDATE_OPERATION_META_VALUE');
+
     // path is a pathMethod tuple... can't change the name now.
     let operationPath = ["paths", ...path]
     let metaPath = ["meta", "paths", ...path]

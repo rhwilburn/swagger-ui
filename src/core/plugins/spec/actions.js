@@ -6,6 +6,7 @@ import isString from "lodash/isString"
 import debounce from "lodash/debounce"
 import set from "lodash/set"
 import assocPath from "lodash/fp/assocPath"
+import * as Im from 'immutable';
 
 import { paramToValue, isEmptyValue } from "core/utils"
 
@@ -28,11 +29,15 @@ export const CLEAR_VALIDATE_PARAMS = "spec_clear_validate_param"
 export const UPDATE_OPERATION_META_VALUE = "spec_update_operation_meta_value"
 export const UPDATE_RESOLVED = "spec_update_resolved"
 export const UPDATE_RESOLVED_SUBTREE = "spec_update_resolved_subtree"
+export const UPDATE_REQUEST_BATCH = "spec_update_request_batch"
+export const DELETE_REQUEST_BATCH = "spec_delete_request_batch"
 export const SET_SCHEME = "set_scheme"
 
 const toStr = (str) => isString(str) ? str : ""
 
 export function updateSpec(spec) {
+  console.log("actions->updateSpec");
+
   const cleanSpec = (toStr(spec)).replace(/\t/g, "  ")
   if(typeof spec === "string") {
     return {
@@ -43,6 +48,8 @@ export function updateSpec(spec) {
 }
 
 export function updateResolved(spec) {
+  console.log("actions->updateResolved");
+
   return {
     type: UPDATE_RESOLVED,
     payload: spec
@@ -50,10 +57,14 @@ export function updateResolved(spec) {
 }
 
 export function updateUrl(url) {
+  console.log("actions->updateUrl");
+
   return {type: UPDATE_URL, payload: url}
 }
 
 export function updateJsonSpec(json) {
+  console.log("actions->updateJsonSpec");
+
   return {type: UPDATE_JSON, payload: json}
 }
 
@@ -138,12 +149,15 @@ export const resolveSpec = (json, url) => ({specActions, specSelectors, errActio
     })
 }
 
-let requestBatch = []
+//let requestBatch = []
 
-const debResolveSubtrees = debounce(async () => {
-  const system = requestBatch.system // Just a reference to the "latest" system
+const debResolveSubtrees = debounce(async (system, requestBatch) => {
 
-  if(!system) {
+  console.log("actions->debResolveSubtrees");
+  // const system = requestBatch.system // Just a reference to the "latest" system
+  
+
+  if(!system || !requestBatch) {
     console.error("debResolveSubtrees: don't have a system to operate on, aborting.")
     return
   }
@@ -243,8 +257,14 @@ const debResolveSubtrees = debounce(async () => {
       specWithCurrentSubtrees: specSelectors.specJS()
     }))
 
-    delete requestBatch.system
-    requestBatch = [] // Clear stack
+    //debugger;
+    var a = system.spec().get('requestBatch');
+    var debug = specActions.deleteRequestBatch();
+    var b = system.spec().get('requestBatch');
+    //debugger;
+
+    //delete requestBatch.system
+    //requestBatch = [] // Clear stack
   } catch(e) {
     console.error(e)
   }
@@ -253,22 +273,40 @@ const debResolveSubtrees = debounce(async () => {
 }, 35)
 
 export const requestResolvedSubtree = path => system => {
-  // poor-man's array comparison
-  // if this ever inadequate, this should be rewritten to use Im.List
-  const isPathAlreadyBatched = requestBatch
-    .map(arr => arr.join("@@"))
-    .indexOf(path.join("@@")) > -1
+  //console.log("actions->requestResolvedSubtree");
 
-  if(isPathAlreadyBatched) {
-    return
+  const {
+    specActions,
+  } = system
+
+  let requestBatch = system.spec().get('requestBatch');
+  //console.log("actions->requestResolvedSubtree(get.requestBatch): ");
+  //console.log(requestBatch);
+
+  if(requestBatch?.length ?? 0 < 1){
+    requestBatch = [];
   }
 
-  requestBatch.push(path)
-  requestBatch.system = system
-  debResolveSubtrees()
+  if(path.length > 0){
+
+    if(requestBatch.length > 0 && Im.List([...requestBatch.map(arr => arr.path).path]).contains(action.payload.path)) {
+      //Don't duplicate items we have already batched
+      return;
+    }
+
+    //console.log(`Calling resolve subtree for: ${path}`)
+    
+    //We must update this here so that we can do deduplication using system.spec().get('requestBatch')
+    //This method batches up requests; then eventually the debResolveSubtrees will execute after (due to debounce)
+    var debug = specActions.updateRequestBatch([{path}]).payload;
+
+    console.log(JSON.stringify(debug.map(x => x.path)));
+    debResolveSubtrees(system, debug);
+  }
 }
 
 export function changeParam( path, paramName, paramIn, value, isXml ){
+  console.log("actions->changeParam");
   return {
     type: UPDATE_PARAM,
     payload:{ path, value, paramName, paramIn, isXml }
@@ -276,13 +314,30 @@ export function changeParam( path, paramName, paramIn, value, isXml ){
 }
 
 export function changeParamByIdentity( pathMethod, param, value, isXml ){
+  console.log("actions->changeParamByIdentity");
   return {
     type: UPDATE_PARAM,
     payload:{ path: pathMethod, param, value, isXml }
   }
 }
 
+export const updateRequestBatch = (requestBatch = []) => {
+  console.log("actions->updateRequestBatch");
+  return {
+    type: UPDATE_REQUEST_BATCH,
+    payload: [...requestBatch]
+  }
+}
+
+export const deleteRequestBatch = () => {
+  console.log("actions->deleteRequestBatch");
+  return {
+    type: DELETE_REQUEST_BATCH,
+    payload: {}
+  }
+}
 export const updateResolvedSubtree = (path, value) => {
+  console.log("actions->updateResolvedSubtree");
   return {
     type: UPDATE_RESOLVED_SUBTREE,
     payload: { path, value }
@@ -290,6 +345,7 @@ export const updateResolvedSubtree = (path, value) => {
 }
 
 export const invalidateResolvedSubtreeCache = () => {
+  console.log("actions->invalidateResolvedSubtreeCache");
   return {
     type: UPDATE_RESOLVED_SUBTREE,
     payload: {
@@ -300,6 +356,7 @@ export const invalidateResolvedSubtreeCache = () => {
 }
 
 export const validateParams = ( payload, isOAS3 ) =>{
+  console.log("actions->validateParams");
   return {
     type: VALIDATE_PARAMS,
     payload:{
@@ -310,6 +367,7 @@ export const validateParams = ( payload, isOAS3 ) =>{
 }
 
 export const updateEmptyParamInclusion = ( pathMethod, paramName, paramIn, includeEmptyValue ) =>{
+  console.log("actions->updateEmptyParamInclusion");
   return {
     type: UPDATE_EMPTY_PARAM_INCLUSION,
     payload:{
@@ -322,6 +380,7 @@ export const updateEmptyParamInclusion = ( pathMethod, paramName, paramIn, inclu
 }
 
 export function clearValidateParams( payload ){
+  console.log("actions->clearValidateParams");
   return {
     type: CLEAR_VALIDATE_PARAMS,
     payload:{ pathMethod: payload }
@@ -329,6 +388,7 @@ export function clearValidateParams( payload ){
 }
 
 export function changeConsumesValue(path, value) {
+  console.log("actions->changeConsumesValue");
   return {
     type: UPDATE_OPERATION_META_VALUE,
     payload:{ path, value, key: "consumes_value" }
@@ -336,6 +396,7 @@ export function changeConsumesValue(path, value) {
 }
 
 export function changeProducesValue(path, value) {
+  console.log("actions->changeProducesValue");
   return {
     type: UPDATE_OPERATION_META_VALUE,
     payload:{ path, value, key: "produces_value" }
@@ -343,6 +404,7 @@ export function changeProducesValue(path, value) {
 }
 
 export const setResponse = ( path, method, res ) => {
+  console.log("actions->setResponse");
   return {
     payload: { path, method, res },
     type: SET_RESPONSE
@@ -350,6 +412,7 @@ export const setResponse = ( path, method, res ) => {
 }
 
 export const setRequest = ( path, method, req ) => {
+  console.log("actions->setRequest");
   return {
     payload: { path, method, req },
     type: SET_REQUEST
@@ -357,6 +420,7 @@ export const setRequest = ( path, method, req ) => {
 }
 
 export const setMutatedRequest = ( path, method, req ) => {
+  console.log("actions->setMutatedRequest");
   return {
     payload: { path, method, req },
     type: SET_MUTATED_REQUEST
@@ -365,6 +429,7 @@ export const setMutatedRequest = ( path, method, req ) => {
 
 // This is for debugging, remove this comment if you depend on this action
 export const logRequest = (req) => {
+  console.log("actions->logRequest");
   return {
     payload: req,
     type: LOG_REQUEST
@@ -374,6 +439,8 @@ export const logRequest = (req) => {
 // Actually fire the request via fn.execute
 // (For debugging) and ease of testing
 export const executeRequest = (req) =>
+  console.log("actions->executeRequest");
+
   ({fn, specActions, specSelectors, getConfigs, oas3Selectors}) => {
     let { pathName, method, operation } = req
     let { requestInterceptor, responseInterceptor } = getConfigs()
@@ -491,6 +558,8 @@ export const executeRequest = (req) =>
 
 // I'm using extras as a way to inject properties into the final, `execute` method - It's not great. Anyone have a better idea? @ponelat
 export const execute = ( { path, method, ...extras }={} ) => (system) => {
+  console.log("actions->execute");
+
   let { fn:{fetch}, specSelectors, specActions } = system
   let spec = specSelectors.specJsonWithResolvedSubtrees().toJS()
   let scheme = specSelectors.operationScheme(path, method)
@@ -511,6 +580,7 @@ export const execute = ( { path, method, ...extras }={} ) => (system) => {
 }
 
 export function clearResponse (path, method) {
+  console.log("actions->clearResponse");
   return {
     type: CLEAR_RESPONSE,
     payload:{ path, method }
@@ -518,6 +588,7 @@ export function clearResponse (path, method) {
 }
 
 export function clearRequest (path, method) {
+  console.log("actions->clearRequest");
   return {
     type: CLEAR_REQUEST,
     payload:{ path, method }
@@ -525,6 +596,7 @@ export function clearRequest (path, method) {
 }
 
 export function setScheme (scheme, path, method) {
+  console.log("actions->setScheme");
   return {
     type: SET_SCHEME,
     payload: { scheme, path, method }
