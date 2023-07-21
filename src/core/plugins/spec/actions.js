@@ -138,14 +138,14 @@ export const resolveSpec = (json, url) => ({specActions, specSelectors, errActio
     })
 }
 
-let requestBatch = [];
+let requestBatch = []
 
 const debResolveSubtrees = debounce(async () => {
   for(let requestBatchForSpec in requestBatch){
 
-    const specUrl = requestBatchForSpec;
-    const requestBatchesForSpec = requestBatch[requestBatchForSpec].map(r => r.path);
-    const system = requestBatch[requestBatchForSpec].system; 
+    const specUrl = requestBatchForSpec
+    const requestBatchesForSpec = requestBatch[requestBatchForSpec].map(r => r.path)
+    const system = requestBatch[requestBatchForSpec].system
 
     if(!system) {
       console.error("debResolveSubtrees: don't have a system to operate on, aborting.")
@@ -247,7 +247,7 @@ const debResolveSubtrees = debounce(async () => {
         specWithCurrentSubtrees: specSelectors.specJS()
       }))
   
-      delete requestBatch[specUrl];
+      delete requestBatch[specUrl]
     } catch(e) {
       console.error(e)
     }
@@ -267,12 +267,12 @@ export const requestResolvedSubtree = path => system => {
     return
   }
 
-  const specUrl = system.spec().get('url');
-  requestBatch[specUrl] ??= [];
-  requestBatch[specUrl].push({path});
-  requestBatch[specUrl].system = system;
+  const specUrl = system.spec().get("url")
+  requestBatch[specUrl] ??= []
+  requestBatch[specUrl].push({path})
+  requestBatch[specUrl].system = system
   
-  debResolveSubtrees();
+  debResolveSubtrees()
 }
 
 export function changeParam( path, paramName, paramIn, value, isXml ){
